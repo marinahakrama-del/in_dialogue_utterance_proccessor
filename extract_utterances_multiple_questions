@@ -1,0 +1,72 @@
+import openpyxl
+
+# ==============================
+# LOAD EXCEL
+# ==============================
+file_path = r"C:\Users\HakramaM\Downloads\in_dialogue_hyper_ID34_GR_InternetNoConnection (1).xlsx"
+wb = openpyxl.load_workbook(file_path)
+sheet = wb.active
+
+# ==============================
+# QUESTIONS - οι ερωτήσεις που θέλεις να ψάξεις
+# ==============================
+QUESTIONS = [
+    #"Πες μου, έχεις κάνει επανεκκίνηση στο ρούτερ σου;",
+   
+]
+
+# ==============================
+# ΒΡΕΣ TRANSCRIPT COLUMN
+# ==============================
+transcript_col = None
+for col in range(1, sheet.max_column + 1):
+    val = sheet.cell(row=1, column=col).value
+    if val and val.strip().lower() == "transcript":
+        transcript_col = col
+        break
+
+if transcript_col is None:
+    raise ValueError("Transcript column not found")
+
+# ==============================
+# ΔΗΜΙΟΥΡΓΙΑ ΣΤΗΛΗΣ ΓΙΑ ΑΠΟΚΛΕΙΣΤΙΚΗ ΑΠΑΝΤΗΣΗ
+# ==============================
+answer_col = sheet.max_column + 1
+sheet.cell(row=1, column=answer_col, value="User Answer")
+
+# ==============================
+# ΕΠΕΞΕΡΓΑΣΙΑ ΚΑΘΕ ROW
+# ==============================
+for row in range(2, sheet.max_row + 1):
+    transcript = sheet.cell(row=row, column=transcript_col).value
+    if not transcript:
+        continue
+
+    # Σπάμε σε γραμμές και αφαιρούμε κενές
+    lines = [line.strip() for line in str(transcript).split("\n") if line.strip()]
+
+    answer_found = ""
+    for i, line in enumerate(lines):
+        for question in QUESTIONS:
+            # Βρήκαμε την ερώτηση 
+            if question.strip().lower() in line.lower():
+                # Τσεκάρουμε αμέσως την επόμενη γραμμή
+                if i + 1 < len(lines):
+                    next_line = lines[i + 1].strip()
+                    if next_line.lower().startswith("customer:"):
+                        # Παίρνουμε μόνο την απάντηση του χρήστη
+                        answer_found = next_line[len("Customer:"):].strip()
+                # Μόνο η πρώτη απάντηση αμέσως μετά την ερώτηση
+                break
+        if answer_found:
+            break
+
+    # Αν βρέθηκε, γράφουμε στην στήλη
+    if answer_found:
+        sheet.cell(row=row, column=answer_col, value=answer_found)
+
+# ==============================
+# SAVE
+# ==============================
+wb.save(file_path)
+print("✅ Η στήλη με την ΑΚΡΙΒΗ απάντηση του χρήστη δημιουργήθηκε δίπλα από το Transcript.")
